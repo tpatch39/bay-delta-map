@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bay, Delta and Watershed Extents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+</style>
+<style>
+/* VOICE: calm and exact, a hydrographer's reference sheet for people mapping who works where
+   IDEA: a nautical chart with its legend column of chart notes
+   PICTURE: the map itself, full width, each extent drawn as a chart overlay you can switch on and off
+   COLOUR: pale chart water and buff land; deep bay blue, NOAA chart magenta for the Delta, earth tones for basins
+   TYPE: Barlow Condensed for titles and map lettering, Source Sans 3 for notes
+   LAYOUT: title strip with presets; map and legend column side by side, stacking under 900px */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#0d1419);--ink:light-dark(#14212b,#e4ecf1);--mute:light-dark(#55636e,#9aabb7);
+--rule:light-dark(#dfe5e9,#24313a);--panel:light-dark(#f5f8fa,#121c23);
+--bay:light-dark(#1462a6,#56a7e6);--delta:light-dark(#b0127a,#ee5bb4);--marsh:light-dark(#5f7f1f,#9cc552);
+--ws:light-dark(#14212b,#e4ecf1);--focus:light-dark(#b0127a,#ee5bb4)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Source Sans 3",system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.lbl,.preset,.mapnote b{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:600}
+.band{padding:clamp(20px,3vw,40px) max(4vw,16px)}
+.wrap{max-width:1400px;margin:0 auto}
+header.band{padding-bottom:16px}
+header .wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px 48px;align-items:end}
+h1{font-size:clamp(28px,3.3vw,44px);line-height:1.05;margin:0;text-wrap:balance}
+.lede{margin:0;max-width:68ch;color:var(--mute);font-size:17px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.preset{font-size:19px;letter-spacing:.01em;min-height:44px;padding:6px 16px;border-radius:999px;border:1.5px solid var(--rule);background:var(--bg);color:var(--ink);cursor:pointer}
+.preset[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.preset:focus-visible,button:focus-visible,input:focus-visible+.sw{outline:3px solid var(--focus);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.mapcol{position:relative;border-right:1px solid var(--rule)}
+#map{height:min(78vh,820px);min-height:480px;background:light-dark(#cfe2ec,#0f2532)}
+.mapnote{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;padding:10px max(4vw,16px) 12px 16px;font-size:14px;color:var(--mute);border-top:1px solid var(--rule)}
+.mapnote a{color:var(--ink)}
+aside{background:var(--panel);overflow:auto;max-height:calc(min(78vh,820px) + 46px)}
+.grp{padding:16px 18px 8px;border-bottom:1px solid var(--rule)}
+.grp h2{font-size:24px;line-height:1.1;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+.grp h2 i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.grp>p{margin:0 0 6px;font-size:14px;color:var(--mute)}
+.row{position:relative;display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:2px 10px;padding:9px 0;border-top:1px dashed var(--rule);align-items:start}
+.row:first-of-type{border-top:0}
+.row input{position:absolute;opacity:0;width:1px;height:1px}
+.row label{display:contents;cursor:pointer}
+.sw{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;margin-top:1px;border:1.5px solid var(--rule);background:var(--bg)}
+.sw svg{width:20px;height:20px;opacity:.28}
+input:checked+.sw svg{opacity:1}
+.nm{font-weight:600;line-height:1.3}
+.nm small{display:block;font-weight:400;color:var(--mute);font-size:14px;line-height:1.4;margin-top:2px}
+.ar{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;font-size:14px;line-height:1.35}
+.ar b{display:block;font-size:15px}
+.ar span{color:var(--mute)}
+.zoom{grid-column:3;justify-self:end;font:600 13px/1 "Source Sans 3",sans-serif;color:var(--ink);background:none;border:1px solid var(--rule);border-radius:6px;padding:6px 8px;min-height:32px;cursor:pointer;margin-top:4px}
+.sub{grid-column:2/4;display:grid;gap:2px;margin-top:4px;font-size:14px}
+.sub div{display:flex;justify-content:space-between;gap:8px}
+.sub i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.sub span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--mute)}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px 40px}
+.notes h3{font-size:22px;margin:0 0 4px;line-height:1.15}
+.notes p{margin:0;max-width:62ch}
+.src{font-size:14px;color:var(--mute);margin-top:28px;max-width:110ch}
+.src a{color:var(--ink)}
+.src ul{margin:6px 0 0;padding-left:18px}
+/* map lettering */
+.lbl{background:none;border:0;pointer-events:none}
+.lbl span{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:15px;letter-spacing:.02em;color:var(--ink);text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 6px var(--bg)}
+.lbl.water span{font-style:italic;font-weight:500;color:var(--bay)}
+.lbl.delta span{color:var(--delta)}
+.lbl.big span{font-size:18px;text-transform:none;opacity:.85}
+.lbl.city span{font:400 12px "Source Sans 3",sans-serif;color:var(--mute);transform:translate(6px,-50%)}
+.lbl.city span::before{content:"";position:absolute;left:-6px;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:var(--mute)}
+#map.zlo .lbl.near{display:none}
+#map.zhi .lbl.big{display:none}
+#map.zlo .lbl.city.minor{display:none}
+#map.zvlo .lbl.city:not(.key){display:none}
+#map.zvlo .lbl.delta{display:none}
+.leaflet-container{font-family:"Source Sans 3",system-ui,sans-serif}
+.leaflet-tooltip.tip{font-size:14px;line-height:1.35;padding:6px 9px;border-radius:6px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);box-shadow:0 2px 10px rgb(0 0 0/.15)}
+.leaflet-tooltip.tip b{display:block}
+.leaflet-tooltip.tip::before{display:none}
+.leaflet-control-attribution{font-size:11px}
+:root[data-theme=dark] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}}
+.leaflet-bar a{background:var(--bg);color:var(--ink);border-color:var(--rule)}
+@media(max-width:900px){header .wrap{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr)}.mapcol{border-right:0}aside{max-height:none}#map{height:62vh;min-height:380px}}
+@media(max-width:600px){.preset{font-size:17px;padding:6px 12px}.lbl span{font-size:13px}.lbl.big span{font-size:15px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="band"><div class="wrap">
+  <h1>“The Bay” is 1,142 km² of water — or a watershed more than 100 times larger</h1>
+  <div><p class="lede">The Bay, the Delta and the watersheds feeding them each have several working definitions, and the organizations you’ll map follow different ones. Switch extents on and off to see where they overlap and where they part ways.</p>
+  <div class="presets" role="group" aria-label="Preset views">
+    <button class="preset" id="p-overview" aria-pressed="true">Overview</button>
+    <button class="preset" id="p-bay" aria-pressed="false">The Bay</button>
+    <button class="preset" id="p-delta" aria-pressed="false">The Delta</button>
+    <button class="preset" id="p-watersheds" aria-pressed="false">Watersheds</button>
+  </div></div>
+</div></header>
+
+<main class="grid">
+  <div class="mapcol">
+    <div id="map" role="region" aria-label="Map of Bay, Delta and watershed extents"></div>
+    <div class="mapnote" id="mapnote"><span id="basestatus">Loading the basemap…</span><a id="osmlink" href="https://www.openstreetmap.org/#map=8/38.1/-121.9">Open this view on OpenStreetMap ↗</a></div>
+  </div>
+  <aside id="legend" aria-label="Extents"></aside>
+</main>
+
+<section class="band"><div class="wrap">
+  <div class="notes">
+    <div><h3>The Bay has three common sizes</h3><p>Open tidal water from the Golden Gate to Suisun Bay is about 1,140 km². The nine-county Bay Area used for regional planning is 16 times larger. The USGS San Francisco Bay hydrologic region (HUC 1805) falls in between, and also takes in coastal basins — Tomales–Drake Bays and the San Mateo coast — that drain straight to the Pacific.</p></div>
+    <div><h3>“The Delta” usually means the Legal Delta</h3><p>Water Code §12220 (1959) fixes the Legal Delta at about 2,985 km² (≈738,000 acres). The 2009 Delta Reform Act (§85058) adds the Suisun Marsh for the Delta Plan, so Suisun and Grizzly Bays count as both Bay and Delta depending on who is speaking.</p></div>
+    <div><h3>The watershed reaches Oregon and the high Sierra</h3><p>The Sacramento, San Joaquin and SF Bay regions together drain about 30% of California. Add the Tulare–Buena Vista basin, which mostly drains internally but spills north into the San Joaquin in very wet years, and the figure becomes the often-quoted 40%.</p></div>
+  </div>
+  <div class="src">
+    <b>Sources.</b> Areas are computed from the shapes shown, on the WGS84 ellipsoid; shapes are simplified for the web, so treat edges as approximate at street scale.
+    <ul>
+      <li>Legal Delta and Suisun Marsh boundaries: California Department of Water Resources, as packaged in the Interagency Ecological Program’s <a href="https://github.com/InteragencyEcologicalProgram/deltamapr">deltamapr</a>.</li>
+      <li>Bay and Delta waterways: DWR 1:24,000 hydrography (<code>hydro_delta_marsh</code>), also from deltamapr. Water west of the Legal Delta is counted as the Bay.</li>
+      <li>Watersheds: USGS 1:250,000 hydrologic cataloging units, via <a href="https://github.com/rc6750/HUC8-GEOJSON">HUC8-GEOJSON</a>. Codes follow that older edition; a few differ from today’s Watershed Boundary Dataset.</li>
+      <li>Counties: <a href="https://github.com/codeforgermany/click_that_hood">click_that_hood</a> California counties. Rivers, lakes and towns: <a href="https://www.naturalearthdata.com/">Natural Earth</a>. Map tiles, where they load: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.</li>
+    </ul>
+  </div>
+</div></section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+{
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('en-US');
+const mi = k => nf.format(Math.round(k * 0.386102));
+const dark = () => { const t = document.documentElement.dataset.theme; return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+const C = () => dark() ? {
+  land:'#1b252c', landLine:'#2c3a44', water:'#0f2532', river:'#2f6f93', ink:'#e4ecf1', mute:'#9aabb7',
+  bay:'#56a7e6', delta:'#ee5bb4', marsh:'#9cc552', dwater:'#3fc1dd',
+  h1802:'#9cbf5f', h1804:'#e0aa4a', h1805:'#6fa3d6', h1803:'#a89c8e', huc8:'#7e8f9b'
+} : {
+  land:'#f4efdf', landLine:'#d9cfb3', water:'#cfe2ec', river:'#6aa6c6', ink:'#14212b', mute:'#55636e',
+  bay:'#1462a6', delta:'#b0127a', marsh:'#5f7f1f', dwater:'#0f86a3',
+  h1802:'#6f8f3d', h1804:'#c08a2c', h1805:'#3f73a3', h1803:'#8a7f72', huc8:'#6b5f55'
+};
+
+const map = L.map('map', { zoomSnap: 0.25, minZoom: 5, maxZoom: 14, attributionControl: true, worldCopyJump: false });
+map.attributionControl.setPrefix(false);
+const panes = { base: 250, ws: 350, admin: 380, region: 400, water: 420, top: 440, labels: 620 };
+for (const [n, z] of Object.entries(panes)) { map.createPane(n).style.zIndex = z; }
+map.getPane('labels').style.pointerEvents = 'none';
+map.getPane('base').style.pointerEvents = 'none';
+
+/* Live OpenStreetMap tiles where the page allows them; otherwise the drawn basemap stays */
+let tilesLive = false, tileErrors = 0;
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', opacity: .9, referrerPolicy: 'strict-origin-when-cross-origin'
+}).addTo(map);
+const setStatus = () => {
+  $('#basestatus').textContent = tilesLive
+    ? 'Basemap: live OpenStreetMap tiles.'
+    : 'OpenStreetMap tiles didn’t load (offline, or blocked by a privacy extension), so a built-in basemap is drawn.';
+  map.getPane('base').style.display = tilesLive ? 'none' : '';
+};
+osm.on('tileload', () => { if (!tilesLive) { tilesLive = true; setStatus(); } });
+osm.on('tileerror', () => { tileErrors++; if (tileErrors === 2) setStatus(); });
+setTimeout(setStatus, 4000);
+const upLink = () => { const c = map.getCenter(); $('#osmlink').href = `https://www.openstreetmap.org/#map=${Math.round(map.getZoom())}/${c.lat.toFixed(4)}/${c.lng.toFixed(4)}`; };
+const zClass = () => { const z = map.getZoom(), el = $('#map'); el.classList.toggle('zlo', z < 8.5); el.classList.toggle('zhi', z >= 9.5); el.classList.toggle('zvlo', z < 7); };
+map.on('moveend', upLink); map.on('zoomend', zClass);
+
+const tip = (layer, html) => layer.bindTooltip(html, { sticky: true, className: 'tip', direction: 'top', offset: [0, -8] });
+const km = k => `${nf.format(k)} km² · ${mi(k)} mi²`;
+const label = (latlng, text, cls) => L.marker(latlng, { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: 'lbl ' + cls, html: `<span>${text}</span>`, iconSize: null }) });
+
+let D = null;
+const HUC4N = { '1802': 'Sacramento', '1804': 'San Joaquin', '1805': 'San Francisco Bay', '1803': 'Tulare–Buena Vista Lakes' };
+
+/* Each extent: how it draws, what it means, how big it is */
+const DEFS = [
+  { g: 'bay', id: 'bayWater', name: 'Open water of the estuary', on: true,
+    desc: 'Tidal water from the Golden Gate to the western edge of the Legal Delta: Central & South Bay, San Pablo Bay, Carquinez Strait, Suisun & Grizzly Bays.',
+    km2: d => d.bayWaterKm2, pane: 'water',
+    style: c => ({ color: c.bay, weight: .6, fillColor: c.bay, fillOpacity: .5 }),
+    tip: p => `<b>${p.name}</b>${km(p.km2)}`,
+    labels: [[[37.64, -122.2], 'San Francisco Bay', 'water near'], [[38.05, -122.37], 'San Pablo Bay', 'water near'], [[38.035, -122.07], 'Suisun Bay', 'water near']] },
+  { g: 'bay', id: 'suisun', name: 'Suisun Marsh', on: false,
+    desc: 'Suisun Marsh Preservation Act boundary, split into primary and secondary management areas. Also part of “the Delta” under the 2009 Delta Reform Act.',
+    km2: d => d.suisunTotal, pane: 'region',
+    style: (c, f) => ({ color: c.marsh, weight: 1, fillColor: c.marsh, fillOpacity: /Primary/.test(f.properties.zone) ? .38 : .14, dashArray: /Primary/.test(f.properties.zone) ? null : '3 3' }),
+    tip: p => `<b>Suisun Marsh</b>${p.zone} management area`,
+    labels: [[[38.255, -121.98], 'Suisun Marsh', 'near']] },
+  { g: 'bay', id: 'bay9', name: 'Nine-county Bay Area', on: false,
+    desc: 'Alameda, Contra Costa, Marin, Napa, San Francisco, San Mateo, Santa Clara, Solano and Sonoma — the regional planning definition.',
+    km2: d => d.bay9.features[0].properties.km2, pane: 'admin',
+    style: c => ({ color: c.bay, weight: 2.2, dashArray: '7 5', fillColor: c.bay, fillOpacity: .05 }),
+    tip: () => '<b>Nine-county Bay Area</b>Hover a county for its name',
+    extra: d => L.geoJSON({ type: 'FeatureCollection', features: d.counties.features.filter(f => f.properties.bay9) }, { pane: 'admin',
+      style: () => ({ color: C().bay, weight: .7, opacity: .7, fill: true, fillOpacity: 0 }), onEachFeature: (f, l) => tip(l, `<b>${f.properties.name} County</b>Bay Area county`) }),
+    labels: [[[38.62, -122.95], 'Nine-county Bay Area', 'big']] },
+
+  { g: 'delta', id: 'legalDelta', name: 'Legal Delta', on: true,
+    desc: 'Sacramento–San Joaquin Delta as drawn in Water Code §12220 (Delta Protection Act, 1959). About 738,000 acres.',
+    km2: d => d.legalDelta.features[0].properties.km2, pane: 'region',
+    style: c => ({ color: c.delta, weight: 2.4, fillColor: c.delta, fillOpacity: .12 }),
+    tip: p => `<b>Legal Delta</b>${km(p.km2)}`,
+    labels: [[[38.3, -121.55], 'Legal Delta', 'delta']] },
+  { g: 'delta', id: 'deltaWater', name: 'Delta channels and sloughs', on: false,
+    desc: 'The waterways inside the Legal Delta: the two rivers, their distributaries, sloughs, flooded islands and Clifton Court Forebay.',
+    km2: d => d.deltaWaterKm2, pane: 'water',
+    style: c => ({ color: c.dwater, weight: .5, fillColor: c.dwater, fillOpacity: .75 }),
+    tip: p => `<b>${p.name}</b>Delta waterway` },
+  { g: 'delta', id: 'deltaPlan', name: 'Delta + Suisun Marsh', on: false,
+    desc: '“The Delta” under the 2009 Delta Reform Act (Water Code §85058): the Legal Delta plus the Suisun Marsh. The Delta Plan’s scope.',
+    km2: d => d.deltaPlanKm2, pane: 'top',
+    style: c => ({ color: c.delta, weight: 2.6, dashArray: '1 6', lineCap: 'round', fill: false }),
+    tip: () => '<b>Delta + Suisun Marsh</b>Delta Reform Act area' },
+  { g: 'delta', id: 'delta5', name: 'Five Delta counties', on: false,
+    desc: 'Contra Costa, Sacramento, San Joaquin, Solano and Yolo — the counties the Legal Delta falls within.',
+    count: '5 counties', pane: 'admin',
+    build: d => L.geoJSON({ type: 'FeatureCollection', features: d.counties.features.filter(f => f.properties.delta5) }, { pane: 'admin',
+      style: () => ({ color: C().delta, weight: 1.6, dashArray: '8 4', fillColor: C().delta, fillOpacity: .04 }), onEachFeature: (f, l) => tip(l, `<b>${f.properties.name} County</b>Delta county`) }) },
+
+  { g: 'ws', id: 'huc4', name: 'Hydrologic regions (HUC 4)', on: true,
+    desc: 'USGS hydrologic units. Tulare–Buena Vista (dashed) is a mostly closed basin.',
+    pane: 'ws',
+    style: (c, f) => { const k = f.properties.code; return { color: c['h' + k], weight: 1.4, fillColor: c['h' + k], fillOpacity: k === '1803' ? .07 : .17, dashArray: k === '1803' ? '6 5' : null }; },
+    tip: p => `<b>${p.name} (HUC ${p.code})</b>${km(p.km2)} · ${p.n} subbasins`,
+    labels: [[[40.35, -121.75], 'Sacramento basin', 'big'], [[37.55, -120.25], 'San Joaquin basin', 'big'], [[36.05, -119.35], 'Tulare–Buena Vista basin', 'big'], [[37.12, -121.72], 'SF Bay basin', 'big']] },
+  { g: 'ws', id: 'huc8', name: 'Subbasins (HUC 8)', on: false,
+    desc: 'The 66 cataloging units inside those regions — Feather, American, Mokelumne, Tuolumne and the rest. Hover for names.',
+    count: '66 units', pane: 'ws',
+    style: c => ({ color: c.huc8, weight: .7, opacity: .8, fillColor: c.huc8, fillOpacity: .02 }),
+    tip: p => `<b>${p.name}</b>HUC ${p.code} · ${km(p.km2)}${p.coastal ? '<br>Drains to the Pacific, not the Bay' : ''}` },
+  { g: 'ws', id: 'bayDeltaWs', name: 'Bay-Delta watershed', on: true,
+    desc: 'Sacramento + San Joaquin + San Francisco Bay regions: everything that drains to the Delta and Bay in an ordinary year.',
+    km2: d => d.bayDeltaWs.features[0].properties.km2, pane: 'top',
+    style: c => ({ color: c.ink, weight: 2.6, fill: false, opacity: .9 }),
+    tip: p => `<b>Bay-Delta watershed</b>${km(p.km2)} · ≈${p.caShare}% of California` },
+];
+
+const PRESETS = {
+  overview: { on: ['bayWater', 'legalDelta', 'huc4', 'bayDeltaWs'], fit: 'huc4' },
+  bay: { on: ['bayWater', 'suisun', 'bay9', 'legalDelta'], fit: 'bay9' },
+  delta: { on: ['bayWater', 'legalDelta', 'deltaWater', 'deltaPlan', 'suisun'], fit: 'deltaPlan' },
+  watersheds: { on: ['huc4', 'huc8', 'bayDeltaWs', 'legalDelta', 'bayWater'], fit: 'huc4' },
+};
+const GROUPS = {
+  bay: ['The Bay', 'bay', 'From open water to the nine-county region.'],
+  delta: ['The Delta', 'delta', 'The statutory boundary, its waterways and the Delta Plan area.'],
+  ws: ['The watersheds', 'ws', 'Where the water comes from.'],
+};
+
+const layers = {};
+let base = null;
+
+function swatch(def) {
+  const c = C(), s = def.style ? def.style(c, { properties: { code: '1802', zone: 'Primary' } }) : { color: c.delta, dashArray: '8 4', fillColor: c.delta, fillOpacity: .1 };
+  const fill = s.fill === false ? 'none' : (s.fillColor || s.color), fo = s.fill === false ? 0 : Math.max(s.fillOpacity || 0, .25);
+  return `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="15" height="15" rx="2" fill="${fill}" fill-opacity="${fo}" stroke="${s.color}" stroke-width="${Math.min(2.4, Math.max(1.4, s.weight || 1))}" ${s.dashArray ? `stroke-dasharray="${def.id === 'deltaPlan' ? '1 3.5' : '3 2.4'}" stroke-linecap="round"` : ''}/></svg>`;
+}
+
+function buildLegend() {
+  const d = D;
+  $('#legend').innerHTML = Object.entries(GROUPS).map(([g, [title, col, blurb]]) => `
+    <section class="grp"><h2><i style="background:var(--${col === 'ws' ? 'ws' : col})"></i>${title}</h2><p>${blurb}</p>
+    ${DEFS.filter(x => x.g === g).map(x => {
+      const k = x.km2 ? x.km2(d) : null;
+      const sub = x.id === 'huc4' ? `<div class="sub">${['1802', '1804', '1805', '1803'].map(c => { const f = d.huc4.features.find(f => f.properties.code === c).properties; return `<div><span><i style="background:${C()['h' + c]}"></i>${HUC4N[c]}</span><span>${nf.format(f.km2)} km²</span></div>`; }).join('')}</div>` : '';
+      const extraNote = x.id === 'bayDeltaWs' ? `<small>≈${d.bayDeltaWs.features[0].properties.caShare}% of California; ≈40% with the Tulare basin.</small>` : '';
+      return `<div class="row"><label for="l-${x.id}"><input type="checkbox" id="l-${x.id}" data-id="${x.id}" ${x.on ? 'checked' : ''}><span class="sw" id="sw-${x.id}">${swatch(x)}</span>
+        <span class="nm">${x.name}<small>${x.desc}</small>${extraNote}</span></label>
+        <span class="ar">${k ? `<b>${nf.format(k)} km²</b><span>${mi(k)} mi²</span>` : `<b>${x.count}</b>`}<br><button class="zoom" data-zoom="${x.id}" aria-label="Zoom to ${x.name}">Zoom</button></span>${sub}</div>`;
+    }).join('')}</section>`).join('');
+  $('#legend').addEventListener('change', e => { const id = e.target.dataset.id; if (id) { toggle(id, e.target.checked); markPreset(null); } });
+  $('#legend').addEventListener('click', e => { const id = e.target.dataset && e.target.dataset.zoom; if (id) { if (!map.hasLayer(layers[id])) { toggle(id, true); $('#l-' + id).checked = true; } fitTo(id); } });
+}
+
+function makeLayer(def) {
+  const grp = L.layerGroup();
+  const main = def.build ? def.build(D) : L.geoJSON(D[def.id], { pane: def.pane, style: f => def.style(C(), f),
+    onEachFeature: (f, l) => def.tip && tip(l, def.tip(f.properties)) });
+  grp.addLayer(main);
+  if (def.extra) grp.addLayer(def.extra(D));
+  (def.labels || []).forEach(([ll, t, cls]) => grp.addLayer(label(ll, t, cls)));
+  grp._main = main;
+  return grp;
+}
+function restyle() {
+  DEFS.forEach(def => { const g = layers[def.id]; if (!g) return; g.eachLayer(l => { if (l.setStyle && l.options && l.options.style) l.setStyle(l.options.style); }); const sw = $('#sw-' + def.id); if (sw) sw.innerHTML = swatch(def); });
+  if (base) { base.remove(); base = buildBase(); }
+  document.querySelectorAll('.sub i').forEach((el, i) => el.style.background = C()['h' + ['1802', '1804', '1805', '1803'][i]]);
+}
+function toggle(id, on) { const l = layers[id]; if (on) l.addTo(map); else l.remove(); }
+function fitTo(id) {
+  const b = layers[id]._main.getBounds();
+  map.flyToBounds(b, { padding: [24, 24], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : .8 });
+}
+function markPreset(name) { document.querySelectorAll('.preset').forEach(b => b.setAttribute('aria-pressed', b.id === 'p-' + name)); }
+function applyPreset(name, fly = true) {
+  const p = PRESETS[name] || PRESETS.overview;
+  DEFS.forEach(def => { const on = p.on.includes(def.id); toggle(def.id, on); const cb = $('#l-' + def.id); if (cb) cb.checked = on; });
+  markPreset(PRESETS[name] ? name : 'overview');
+  const b = layers[p.fit]._main.getBounds();
+  if (fly) fitTo(p.fit); else map.fitBounds(b, { padding: [16, 16] });
+}
+
+function buildBase() {
+  const c = C(), g = L.layerGroup();
+  L.geoJSON(D.states, { pane: 'base', interactive: false, style: () => ({ color: c.landLine, weight: 1, fillColor: c.land, fillOpacity: 1 }) }).addTo(g);
+  L.geoJSON(D.counties, { pane: 'base', interactive: false, style: () => ({ color: c.landLine, weight: .6, fillColor: c.land, fillOpacity: 1 }) }).addTo(g);
+  L.geoJSON(D.lakes, { pane: 'base', interactive: false, style: () => ({ color: c.river, weight: .5, fillColor: c.water, fillOpacity: 1 }) }).addTo(g);
+  L.geoJSON(D.rivers, { pane: 'base', interactive: false, style: () => ({ color: c.river, weight: 1.1, opacity: .9 }) }).addTo(g);
+  return g.addTo(map);
+}
+function buildPlaces() {
+  const major = ['San Francisco', 'Oakland', 'San Jose', 'Sacramento', 'Stockton', 'Fresno', 'Redding', 'Bakersfield', 'Modesto', 'Santa Rosa', 'Chico'];
+  const g = L.layerGroup();
+  D.places.features.forEach(f => { const [x, y] = f.geometry.coordinates; label([y, x], f.properties.name, 'city' + (major.includes(f.properties.name) ? '' : ' minor') + (['San Francisco', 'Sacramento', 'Fresno', 'Redding', 'San Jose'].includes(f.properties.name) ? ' key' : '')).addTo(g); });
+  return g.addTo(map);
+}
+
+const route = () => { const h = location.hash.slice(1); applyPreset(PRESETS[h] ? h : 'overview', !!D._ready); };
+document.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => { const n = b.id.slice(2); if (location.hash.slice(1) === n) applyPreset(n); else location.hash = n; }));
+
+fetch('data/layers.json').then(r => r.json()).then(d => {
+  D = d;
+  base = buildBase();
+  DEFS.forEach(def => { layers[def.id] = makeLayer(def); });
+  buildPlaces();
+  buildLegend();
+  route();
+  D._ready = true;
+  zClass(); upLink();
+  addEventListener('hashchange', route);
+  new MutationObserver(restyle).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', restyle);
+}).catch(err => { $('#basestatus').textContent = 'The map data could not be loaded. Try reloading the page.'; console.error(err); });
+}
+</script>
+</body>
+</html>
