@@ -728,6 +728,35 @@ input:checked+.sw svg{opacity:1}
 .src{font-size:14px;color:var(--mute);margin-top:28px;max-width:110ch}
 .src a{color:var(--ink)}
 .src ul{margin:6px 0 0;padding-left:18px}
+/* organizations */
+.grp.orgs{background:var(--bg)}
+.ofind{display:grid;gap:8px;margin:8px 0 10px}
+.ofind input[type=search],.ofind select{font:16px "Source Sans 3",sans-serif;min-height:44px;padding:8px 10px;border:1.5px solid var(--rule);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 13px/1.2 "Source Sans 3",sans-serif;min-height:34px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--rule);background:var(--bg);color:var(--mute);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip i{width:10px;height:10px;border-radius:50%;flex:none}
+.chip[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}
+.chips.some .chip[aria-pressed=false] i{opacity:.3}
+.chip:focus-visible,.orow:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.ocount{font-size:14px;color:var(--mute);display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:4px}
+.ocount label{display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--ink)}
+.ocount input{width:18px;height:18px;accent-color:var(--ink)}
+.olist{list-style:none;margin:6px 0 0;padding:0;max-height:340px;overflow:auto;border-top:1px solid var(--rule)}
+.orow{display:grid;grid-template-columns:12px minmax(0,1fr);gap:2px 10px;width:100%;text-align:left;background:none;border:0;border-bottom:1px dashed var(--rule);padding:9px 4px;color:var(--ink);font:15px/1.3 "Source Sans 3",sans-serif;cursor:pointer}
+.orow i{width:10px;height:10px;border-radius:50%;margin-top:4px}
+.orow small{grid-column:2;color:var(--mute);font-size:13px}
+.orow[aria-current=true]{background:var(--panel)}
+.ocard{margin:10px 0 4px;padding:12px 14px;border:1.5px solid var(--ink);border-radius:10px;font-size:14px;line-height:1.45}
+.ocard h3{font-size:21px;line-height:1.15;margin:0 0 4px}
+.ocard p{margin:4px 0}
+.ocard .tags{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.ocard .tags span{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--rule)}
+.ocard button{font:600 13px "Source Sans 3",sans-serif;background:none;border:1px solid var(--rule);border-radius:6px;padding:6px 10px;min-height:32px;color:var(--ink);cursor:pointer;margin-top:4px}
+.oempty{color:var(--mute);font-size:14px;padding:10px 0}
+details.nm{margin-top:24px;font-size:14px;color:var(--mute);max-width:110ch}
+details.nm summary{cursor:pointer;color:var(--ink);font-weight:600}
+details.nm h4{margin:10px 0 2px;font-size:14px;color:var(--ink)}
+details.nm p{margin:0}
 /* map lettering */
 .lbl{background:none;border:0;pointer-events:none}
 .lbl span{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:15px;letter-spacing:.02em;color:var(--ink);text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 6px var(--bg)}
@@ -763,6 +792,7 @@ input:checked+.sw svg{opacity:1}
     <button class="preset" id="p-bay" aria-pressed="false">The Bay</button>
     <button class="preset" id="p-delta" aria-pressed="false">The Delta</button>
     <button class="preset" id="p-watersheds" aria-pressed="false">Watersheds</button>
+    <button class="preset" id="p-orgs" aria-pressed="false">Organizations</button>
   </div></div>
 </div></header>
 
@@ -787,8 +817,10 @@ input:checked+.sw svg{opacity:1}
       <li>Bay and Delta waterways: DWR 1:24,000 hydrography (<code>hydro_delta_marsh</code>), also from deltamapr. Water west of the Legal Delta is counted as the Bay.</li>
       <li>Watersheds: USGS 1:250,000 hydrologic cataloging units, via <a href="https://github.com/rc6750/HUC8-GEOJSON">HUC8-GEOJSON</a>. Codes follow that older edition; a few differ from today’s Watershed Boundary Dataset.</li>
       <li>Counties: <a href="https://github.com/codeforgermany/click_that_hood">click_that_hood</a> California counties. Rivers, lakes and towns: <a href="https://www.naturalearthdata.com/">Natural Earth</a>. Map tiles, where they load: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.</li>
+      <li>Organizations: the <a href="https://cdn.ymaws.com/floodplain.org/resource/resmgr/FMA_2026_List_of_Attendees.pdf">Floodplain Management Association 2026 Annual Conference attendee list</a>, reduced to organization names. Categories, topics and work areas were assigned from public information about each organization; city outlines come from OpenStreetMap.</li>
     </ul>
   </div>
+  <details class="nm" id="notmapped"></details>
 </div></section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -823,7 +855,7 @@ const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const setStatus = () => {
   $('#basestatus').textContent = tilesLive
     ? 'Basemap: live OpenStreetMap tiles.'
-    : 'OpenStreetMap tiles didn’t load (offline, or blocked by a privacy extension), so a built-in basemap is drawn.';
+    : 'OpenStreetMap tiles didn’t load here (this viewer blocks outside map tiles, or you’re offline), so a built-in basemap is drawn.';
   map.getPane('base').style.display = tilesLive ? 'none' : '';
 };
 osm.on('tileload', () => { if (!tilesLive) { tilesLive = true; setStatus(); } });
@@ -904,6 +936,7 @@ const DEFS = [
 ];
 
 const PRESETS = {
+  orgs: { on: ['bayWater', 'legalDelta', 'bayDeltaWs'], fit: 'bayDeltaWs', orgs: true },
   overview: { on: ['bayWater', 'legalDelta', 'huc4', 'bayDeltaWs'], fit: 'huc4' },
   bay: { on: ['bayWater', 'suisun', 'bay9', 'legalDelta'], fit: 'bay9' },
   delta: { on: ['bayWater', 'legalDelta', 'deltaWater', 'deltaPlan', 'suisun'], fit: 'deltaPlan' },
@@ -966,7 +999,113 @@ function applyPreset(name, fly = true) {
   DEFS.forEach(def => { const on = p.on.includes(def.id); toggle(def.id, on); const cb = $('#l-' + def.id); if (cb) cb.checked = on; });
   markPreset(PRESETS[name] ? name : 'overview');
   const b = layers[p.fit]._main.getBounds();
+  setMarkers(!!p.orgs);
+  if (p.orgs && orgMarkers) { const mb = orgMarkers.getBounds(); if (fly) map.flyToBounds(mb, { padding: [30, 30], duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : .8 }); else map.fitBounds(mb, { padding: [24, 24] }); return; }
   if (fly) fitTo(p.fit); else map.fitBounds(b, { padding: [16, 16] });
+}
+
+/* ---------- Organizations (FMA 2026 conference) ---------- */
+let O = null, orgMarkers = null, orgHi = null, selOrg = null;
+const OCOL = { fed: '#3b4fa8', state: '#7b3fa6', local: '#d0562b', district: '#0f8273', consult: '#5d6d7e', research: '#c48f00', academia: '#b0305c', restore: '#3c8f37', tech: '#8a6a3a', services: '#8f8f8f' };
+const oState = { cats: new Set(), topic: '', q: '' };
+const BASIS = {
+  boundary: 'Drawn from the organization’s own boundary.',
+  approx: 'Approximate: no published boundary was at hand, so the nearest matching city, county or point stands in.',
+  general: 'The general area the organization works in, not a legal boundary.'
+};
+const esc = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const isLocal = o => ['city', 'counties', 'point'].includes(o.area.kind);
+function areaGeo(o) {
+  const a = o.area;
+  if (a.kind === 'city') return { type: 'Feature', properties: {}, geometry: O.cities[a.ref] };
+  if (a.kind === 'counties') return { type: 'FeatureCollection', features: D.counties.features.filter(f => a.ref.includes(f.properties.name)) };
+  if (a.kind === 'state') return { type: 'Feature', properties: {}, geometry: O.california };
+  if (a.kind === 'bayDelta') return D.bayDeltaWs;
+  if (a.kind === 'centralValley') return { type: 'FeatureCollection', features: D.huc4.features.filter(f => ['1802', '1804'].includes(f.properties.code)) };
+  if (a.kind === 'deltaPlan') return D.deltaPlan;
+  if (a.kind === 'bayArea') return D.bay9;
+  return null;
+}
+function orgPoint(o) {
+  if (o.area.kind === 'point') return L.latLng(o.area.ref);
+  return L.geoJSON(areaGeo(o)).getBounds().getCenter();
+}
+function orgVisible(o) {
+  if (oState.cats.size && !oState.cats.has(o.cat)) return false;
+  if (oState.topic && !o.topics.includes(oState.topic)) return false;
+  if (oState.q && !(o.name + ' ' + o.area.label).toLowerCase().includes(oState.q)) return false;
+  return true;
+}
+function buildMarkers() {
+  const g = L.featureGroup(), seen = {};
+  O.orgs.forEach(o => {
+    if (!isLocal(o)) return;
+    let ll = orgPoint(o); const k = ll.lat.toFixed(2) + ',' + ll.lng.toFixed(2); const n = seen[k] = (seen[k] || 0) + 1;
+    if (n > 1) { const ang = n * 2.1; ll = L.latLng(ll.lat + .035 * Math.sin(ang), ll.lng + .045 * Math.cos(ang)); }
+    const m = L.circleMarker(ll, { pane: 'top', radius: 7, color: '#fff', weight: 2, fillColor: OCOL[o.cat], fillOpacity: 1 });
+    m.bindTooltip(`<b>${esc(o.name)}</b>${esc(O.cats[o.cat])}`, { className: 'tip', direction: 'top', offset: [0, -8] });
+    m.on('click', () => selectOrg(o, true));
+    m._org = o; g.addLayer(m);
+  });
+  return g;
+}
+function setMarkers(on) { const cb = $('#org-markers'); if (cb) cb.checked = on; if (!orgMarkers) return; if (on) orgMarkers.addTo(map); else orgMarkers.remove(); }
+function filterMarkers() { if (!orgMarkers) return; orgMarkers.eachLayer(m => { const v = orgVisible(m._org); m.setStyle({ opacity: v ? 1 : 0, fillOpacity: v ? 1 : 0 }); m.getElement && m.getElement() && (m.getElement().style.pointerEvents = v ? '' : 'none'); }); }
+function selectOrg(o, fromMap) {
+  selOrg = o;
+  if (orgHi) orgHi.remove();
+  const col = OCOL[o.cat];
+  if (o.area.kind === 'point') orgHi = L.circle(o.area.ref, { pane: 'top', radius: 6000, color: col, weight: 3, fillColor: col, fillOpacity: .18, interactive: false });
+  else orgHi = L.geoJSON(areaGeo(o), { pane: 'top', interactive: false, style: () => ({ color: col, weight: 3, fillColor: col, fillOpacity: .16, dashArray: o.basis === 'general' ? '8 6' : null }) });
+  orgHi.addTo(map);
+  const b = orgHi.getBounds();
+  map.flyToBounds(b, { padding: [40, 40], maxZoom: 11, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : .8 });
+  renderCard(); renderList();
+  if (fromMap) { const row = document.querySelector('.orow[aria-current=true]'); if (row) row.scrollIntoView({ block: 'nearest' }); }
+}
+function renderCard() {
+  const el = $('#ocard'); if (!el) return;
+  if (!selOrg) { el.hidden = true; return; }
+  const o = selOrg; el.hidden = false;
+  el.style.borderColor = OCOL[o.cat];
+  el.innerHTML = `<h3>${esc(o.name)}</h3><p><b style="color:${OCOL[o.cat]}">${esc(O.cats[o.cat])}</b></p>
+    <div class="tags">${o.topics.map(t => `<span>${esc(O.topics[t])}</span>`).join('')}</div>
+    <p><b>Works in:</b> ${esc(o.area.label)}</p><p style="color:var(--mute)">${BASIS[o.basis]}</p>
+    <button type="button" id="oclear">Clear selection</button>`;
+  $('#oclear').addEventListener('click', () => { selOrg = null; if (orgHi) { orgHi.remove(); orgHi = null; } renderCard(); renderList(); });
+}
+function renderList() {
+  const list = O.orgs.filter(orgVisible).sort((a, b) => Object.keys(O.cats).indexOf(a.cat) - Object.keys(O.cats).indexOf(b.cat) || a.name.localeCompare(b.name));
+  $('#ocount-n').textContent = `${list.length} of ${O.orgs.length} organizations`;
+  $('#olist').innerHTML = list.length ? list.map(o => `<li><button type="button" class="orow" data-org="${O.orgs.indexOf(o)}" aria-current="${o === selOrg}"><i style="background:${OCOL[o.cat]}"></i><span>${esc(o.name)}</span><small>${esc(o.area.label)}</small></button></li>`).join('')
+    : '<li class="oempty">No organizations match these filters.</li>';
+  filterMarkers();
+}
+function buildOrgs() {
+  const cats = Object.entries(O.cats).map(([k, v]) => `<button type="button" class="chip" data-cat="${k}" aria-pressed="false"><i style="background:${OCOL[k]}"></i>${esc(v)} <span style="color:var(--mute)">${O.orgs.filter(o => o.cat === k).length}</span></button>`).join('');
+  const topics = Object.entries(O.topics).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  $('#legend').insertAdjacentHTML('afterbegin', `
+    <section class="grp orgs" aria-labelledby="orgs-h"><h2 id="orgs-h"><i style="background:${OCOL.district}"></i>Organizations</h2>
+    <p>${O.orgs.length} organizations from the Floodplain Management Association’s 2026 conference that work in the Bay–Delta region or statewide. Pick one to see the area it works in.</p>
+    <div class="ofind">
+      <input type="search" id="oq" placeholder="Search organizations or places" aria-label="Search organizations">
+      <div class="chips" role="group" aria-label="Filter by category">${cats}</div>
+      <select id="otopic" aria-label="Filter by topic"><option value="">All topics</option>${topics}</select>
+    </div>
+    <div class="ocount"><span id="ocount-n"></span><label><input type="checkbox" id="org-markers"> Local ones on map</label></div>
+    <div class="ocard" id="ocard" hidden></div>
+    <ul class="olist" id="olist"></ul></section>`);
+  document.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.cat; if (oState.cats.has(k)) oState.cats.delete(k); else oState.cats.add(k);
+    b.setAttribute('aria-pressed', oState.cats.has(k)); b.parentElement.classList.toggle('some', oState.cats.size > 0); renderList();
+  }));
+  $('#otopic').addEventListener('change', e => { oState.topic = e.target.value; renderList(); });
+  $('#oq').addEventListener('input', e => { oState.q = e.target.value.trim().toLowerCase(); renderList(); });
+  $('#org-markers').addEventListener('change', e => setMarkers(e.target.checked));
+  $('#olist').addEventListener('click', e => { const b = e.target.closest('.orow'); if (b) selectOrg(O.orgs[+b.dataset.org]); });
+  const nm = O.notMapped, total = Object.values(nm).reduce((s, v) => s + v.length, 0);
+  $('#notmapped').innerHTML = `<summary>${total} organizations on the attendee list are not on this map</summary>` + Object.entries(nm).map(([h, v]) => `<h4>${esc(h)}</h4><p>${v.map(esc).join(' · ')}</p>`).join('');
+  renderList();
 }
 
 function buildBase() {
@@ -987,12 +1126,14 @@ function buildPlaces() {
 const route = () => { const h = location.hash.slice(1); applyPreset(PRESETS[h] ? h : 'overview', !!D._ready); };
 document.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => { const n = b.id.slice(2); if (location.hash.slice(1) === n) applyPreset(n); else location.hash = n; }));
 
-fetch('data/layers.json').then(r => r.json()).then(d => {
-  D = d;
+Promise.all([fetch('data/layers.json').then(r => r.json()), fetch('data/orgs.json').then(r => r.json())]).then(([d, od]) => {
+  D = d; O = od;
   base = buildBase();
   DEFS.forEach(def => { layers[def.id] = makeLayer(def); });
   buildPlaces();
   buildLegend();
+  orgMarkers = buildMarkers();
+  buildOrgs();
   route();
   D._ready = true;
   zClass(); upLink();
